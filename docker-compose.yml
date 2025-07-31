@@ -1,0 +1,80 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: survey2earn_postgres
+    environment:
+      POSTGRES_USER: survey2earn
+      POSTGRES_PASSWORD: password123
+      POSTGRES_DB: survey2earn_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d
+    networks:
+      - survey2earn_network
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: survey2earn_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - survey2earn_network
+
+  # Backend Application (for production)
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: survey2earn_backend
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      - PORT=8080
+      - ENV=production
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=survey2earn
+      - DB_PASSWORD=password123
+      - DB_NAME=survey2earn_db
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=your-production-jwt-secret
+      - LISK_RPC_URL=https://rpc.api.lisk.com
+      - LISK_CHAIN_ID=1135
+    networks:
+      - survey2earn_network
+    restart: unless-stopped
+
+  # pgAdmin (Optional - for database management)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: survey2earn_pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@survey2earn.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    networks:
+      - survey2earn_network
+    profiles:
+      - admin
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  survey2earn_network:
+    driver: bridge
