@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -18,14 +17,79 @@ import (
 )
 
 func main() {
+	// Load configuration
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		log.Fatalf("Failed to load configuration: %v", err)
+	}
+
+	// Setup logger
+	setupLogger(cfg)
+
+	// Initialize database
+	db, err := database.NewDatabase(cfg)
+	if err != nil {
+		logrus.Fatalf("Failed to connect to database: %v", err)
+	}
+	defer db.Close()
+
+	// Run migrations
+	if err := db.AutoMigrate(); err != nil {
+		logrus.Fatalf("Failed to run migrations: %v", err)
+	}
+
+	// Setup Gin mode
+	if cfg.IsProduction() {
+		gin.SetMode(gin.ReleaseMode)
+	}
+
+	// Create Gin router
+	router := gin.New()
+
+	// Add middleware
+	router.Use(gin.Logger())
+	router.Use(gin.Recovery())
+
+	// Add CORS middleware
+	router.Use(corsMiddleware(cfg))
+
+	// Health check endpoint
+	router.GET("/health", func(c *gin.Context) {
+		// Check database health
+		if err := db.Health(); err != nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{
+				"status": "unhealthy",
+				"error":  "database connection failed",
+			})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"status":    "healthy",
+			"timestamp": time.Now().UTC(),
+			"version":   cfg.Server.APIVersion,
+			"database":  "connected",
+		})
+	})
+
+	// API info endpoint
+	router.GET("/", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"name":        "Survey2Earn Backend",
+			"version":     cfg.Server.APIVersion,
+			"environment": cfg.Server.Env,
+			"api_docs":    "/api/v1/docs",
+		})
+	})
+
 	// Setup API routes (will be implemented in next phase)
 	api := router.Group("/api/" + cfg.Server.APIVersion)
 	{
 		api.GET("/status", func(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{
-				"status":      "ok",
-				"timestamp":   time.Now().UTC(),
-				"db_stats":    db.GetStats(),
+				"status":    "ok",
+				"timestamp": time.Now().UTC(),
+				"db_stats":  db.GetStats(),
 			})
 		})
 	}
@@ -119,68 +183,4 @@ func corsMiddleware(cfg *config.Config) gin.HandlerFunc {
 
 		c.Next()
 	})
-} Load configuration
-
-	cfg, err := config.LoadConfig()
-	if err != nil {
-		log.Fatalf("Failed to load configuration: %v", err)
-	}
-
-	// Setup logger
-	setupLogger(cfg)
-
-	// Initialize database
-	db, err := database.NewDatabase(cfg)
-	if err != nil {
-		logrus.Fatalf("Failed to connect to database: %v", err)
-	}
-	defer db.Close()
-
-	// Run migrations
-	if err := db.AutoMigrate(); err != nil {
-		logrus.Fatalf("Failed to run migrations: %v", err)
-	}
-
-	// Setup Gin mode
-	if cfg.IsProduction() {
-		gin.SetMode(gin.ReleaseMode)
-	}
-
-	// Create Gin router
-	router := gin.New()
-
-	// Add middleware
-	router.Use(gin.Logger())
-	router.Use(gin.Recovery())
-
-	// Add CORS middleware
-	router.Use(corsMiddleware(cfg))
-
-	// Health check endpoint
-	router.GET("/health", func(c *gin.Context) {
-		// Check database health
-		if err := db.Health(); err != nil {
-			c.JSON(http.StatusServiceUnavailable, gin.H{
-				"status": "unhealthy",
-				"error":  "database connection failed",
-			})
-			return
-		}
-
-		c.JSON(http.StatusOK, gin.H{
-			"status":    "healthy",
-			"timestamp": time.Now().UTC(),
-			"version":   cfg.Server.APIVersion,
-			"database":  "connected",
-		})
-	})
-
-	// API info endpoint
-	router.GET("/", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
-			"name":        "Survey2Earn Backend",
-			"version":     cfg.Server.APIVersion,
-			"environment": cfg.Server.Env,
-			"api_docs":    "/api/v1/docs",
-		})
-	})
+}

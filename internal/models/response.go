@@ -67,12 +67,12 @@ type Answer struct {
 
 // AnswerValue represents the structured value of an answer
 type AnswerValue struct {
-	Type     string      `json:"type"`     // text, number, array, boolean
-	Value    interface{} `json:"value"`    // The actual answer value
-	Options  []string    `json:"options"`  // Selected options for multiple choice
-	Rating   *int        `json:"rating"`   // Rating value
-	Scale    *int        `json:"scale"`    // Scale value
-	Date     *time.Time  `json:"date"`     // Date value
+	Type       string      `json:"type"`     // text, number, array, boolean
+	Content    interface{} `json:"value"`    // The actual answer value (keep JSON tag as "value")
+	Options    []string    `json:"options"`  // Selected options for multiple choice
+	Rating     *int        `json:"rating"`   // Rating value
+	Scale      *int        `json:"scale"`    // Scale value
+	Date       *time.Time  `json:"date"`     // Date value
 }
 
 // ResponseSummary represents a summary of responses for analytics
@@ -90,7 +90,7 @@ type ResponseSummary struct {
 	Survey           Survey    `json:"survey" gorm:"foreignKey:SurveyID"`
 }
 
-// AnswerValueData implements driver.Valuer interface for AnswerValue
+// Value implements driver.Valuer interface for AnswerValue
 func (av AnswerValue) Value() (driver.Value, error) {
 	return json.Marshal(av)
 }
