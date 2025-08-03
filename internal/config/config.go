@@ -4,6 +4,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"fmt"
 
 	"github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"
@@ -155,12 +156,19 @@ func getEnvAsInt64(key string, defaultValue int64) int64 {
 
 // GetDatabaseDSN returns the PostgreSQL connection string
 func (c *Config) GetDatabaseDSN() string {
-	return "host=" + c.Database.Host +
+	dsn := "host=" + c.Database.Host +
 		" port=" + c.Database.Port +
 		" user=" + c.Database.User +
 		" password=" + c.Database.Password +
 		" dbname=" + c.Database.Name +
 		" sslmode=" + c.Database.SSLMode
+
+		fmt.Printf("DB Config - Host: %s, Port: %s, User: %s, DBName: %s, SSLMode: %s\n", 
+        c.Database.Host, c.Database.Port, c.Database.User, 
+        c.Database.Name, c.Database.SSLMode)
+    	fmt.Printf("Full DSN: %s\n", dsn)
+    
+    return dsn
 }
 
 // IsProduction checks if the environment is production
